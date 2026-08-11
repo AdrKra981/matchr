@@ -6,3 +6,4 @@ redis
 openai
 pypdf
 python-multipart
+qdrant-client

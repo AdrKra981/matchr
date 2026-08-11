@@ -1,3 +1,4 @@
+from app.domain.job_index_item import JobIndexItem
 from dataclasses import asdict
 from app.domain.job import Job
 from psycopg.types.json import Json
@@ -42,3 +43,13 @@ def save_jobs(jobs: list[Job]) -> int:
     finally:
         conn.close()
     return saved
+
+def get_jobs_for_indexing() -> list[JobIndexItem]:
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, title, description FROM jobs")
+            rows = cur.fetchall()
+            return [JobIndexItem(id=r[0], title=r[1], description=r[2]) for r in rows]
+    finally:
+        conn.close()
