@@ -1,2 +1,5 @@
 fastapi
 uvicorn[standard]
+requests
+psycopg[binary]
+redis
