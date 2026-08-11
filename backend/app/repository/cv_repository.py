@@ -13,3 +13,15 @@ def save_cv(filename: str, content: str, embedding: list[float]) -> int:
                 return cur.fetchone()[0]
     finally:
         conn.close()
+
+def get_latest_cv() -> dict | None:
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, embedding FROM cv ORDER BY created_at DESC LIMIT 1")
+            row = cur.fetchone()
+            if row is None:
+                return None
+            return {"id": row[0], "embedding": row[1]}
+    finally:
+        conn.close()

@@ -28,3 +28,13 @@ CREATE TABLE IF NOT EXISTS cv (
     embedding JSONB NOT NULL,
     created_at TIMESTAMPTZ DEFAULT now()
 );
+
+CREATE TABLE IF NOT EXISTS matches (
+    id SERIAL PRIMARY KEY,
+    cv_id INTEGER REFERENCES cv(id),
+    job_id INTEGER REFERENCES jobs(id),
+    score REAL,
+    rank INTEGER,
+    explanation TEXT,
+    created_at TIMESTAMPTZ DEFAULT now()
+);

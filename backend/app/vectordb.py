@@ -10,3 +10,7 @@ def ensure_collection():
             COLLECTION,
             vectors_config=VectorParams(size=1536, distance=Distance.COSINE),
         )
+
+def search_jobs(vector: list[float], top_k: int = 10):
+    response = qdrant.query_points(collection_name=COLLECTION, query=vector, limit=top_k)
+    return response.points
