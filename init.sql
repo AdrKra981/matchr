@@ -20,3 +20,11 @@ CREATE TABLE jobs (
     expires_at TIMESTAMPTZ,
     fetched_at TIMESTAMPTZ DEFAULT now()
 );
+
+CREATE TABLE IF NOT EXISTS cv (
+    id SERIAL PRIMARY KEY,
+    filename TEXT,
+    content TEXT NOT NULL,
+    embedding JSONB NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
