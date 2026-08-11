@@ -18,10 +18,10 @@ def get_latest_cv() -> dict | None:
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT id, embedding FROM cv ORDER BY created_at DESC LIMIT 1")
+            cur.execute("SELECT id, embedding, content FROM cv ORDER BY created_at DESC LIMIT 1")
             row = cur.fetchone()
             if row is None:
                 return None
-            return {"id": row[0], "embedding": row[1]}
+            return {"id": row[0], "embedding": row[1], "content": row[2]}
     finally:
         conn.close()

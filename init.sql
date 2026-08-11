@@ -35,6 +35,6 @@ CREATE TABLE IF NOT EXISTS matches (
     job_id INTEGER REFERENCES jobs(id),
     score REAL,
     rank INTEGER,
-    explanation TEXT,
+    explanation JSONB,
     created_at TIMESTAMPTZ DEFAULT now()
 );

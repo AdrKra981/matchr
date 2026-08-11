@@ -53,3 +53,15 @@ def get_jobs_for_indexing() -> list[JobIndexItem]:
             return [JobIndexItem(id=r[0], title=r[1], description=r[2]) for r in rows]
     finally:
         conn.close()
+
+def get_job(job_id: int) -> dict | None:
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, title, description FROM jobs WHERE id = %s", (job_id,))
+            row = cur.fetchone()
+            if row is None:
+                return None
+            return {"id": row[0], "title": row[1], "description": row[2]}
+    finally:
+        conn.close()
