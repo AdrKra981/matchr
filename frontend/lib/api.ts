@@ -1,5 +1,5 @@
 import { API_URL } from "./config";
-import { Match } from "./types";
+import { Match, RankParams } from "./types";
 
 export async function uploadCv(file: File) {
     const fd = new FormData();
@@ -15,9 +15,11 @@ export const fetchJobs = (what: string) =>
 export const indexJobs = () =>
     fetch(`${API_URL}/jobs/index`, { method: "POST" }).then(r => r.json());
 
-export const rankMatches = (topK = 10, what?: string) => {
+export const rankMatches = ({ topK = 10, what, city, minSalary }: RankParams = {}) => {
     const params = new URLSearchParams({ top_k: String(topK) });
     if (what) params.append("what", what);
+    if (city) params.append("city", city);
+    if (minSalary !== undefined) params.append("minSalary", String(minSalary));
     return fetch(`${API_URL}/matches/rank?${params}`, { method: "POST" }).then(r => r.json());
 };
 

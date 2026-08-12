@@ -16,3 +16,10 @@ export interface Match {
     salary_currency: string | null;
     explanation: Explanation | null;
 }
+
+export interface RankParams {
+    topK?: number;
+    what?: string;
+    city?: string;
+    minSalary?: number;
+}

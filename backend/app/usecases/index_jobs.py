@@ -14,7 +14,7 @@ def index_jobs() -> dict:
         points.append(PointStruct(
             id=item.id,
             vector=vector,
-            payload={"job_id": item.id, "title": item.title, "search_query": item.search_query},
+            payload={"job_id": item.id, "title": item.title, "search_query": item.search_query, "salary_from": item.salary_from, "city": item.city},
         ))
 
     if points:
