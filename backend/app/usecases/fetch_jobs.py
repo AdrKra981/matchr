@@ -23,6 +23,8 @@ def fetch_and_store_jobs(what: str) -> dict:
 
     source = AdzunaSource(os.getenv("ADZUNA_APP_ID"), os.getenv("ADZUNA_APP_KEY"))
     offers = source.fetch(what)
+    for job in offers:
+        job.search_query = what
     saved = save_jobs(offers)
 
     redis_client.setex(cache_key, 3600, "1")

@@ -37,3 +37,28 @@ def update_explanation(match_id: int, explanation: dict) -> None:
                 )
     finally:
         conn.close()
+
+def get_ranking() -> list[dict]:
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT m.rank, m.score, m.explanation,
+                       j.title, j.company_name, j.city, j.url,
+                       j.salary_from, j.salary_to, j.salary_currency
+                FROM matches m
+                JOIN jobs j ON j.id = m.job_id
+                WHERE m.cv_id = (SELECT id FROM cv ORDER BY created_at DESC LIMIT 1)
+                ORDER BY m.rank
+            """)
+            rows = cur.fetchall()
+            return [
+                {
+                    "rank": r[0], "score": r[1], "explanation": r[2],
+                    "title": r[3], "company_name": r[4], "city": r[5], "url": r[6],
+                    "salary_from": r[7], "salary_to": r[8], "salary_currency": r[9],
+                }
+                for r in rows
+            ]
+    finally:
+        conn.close()

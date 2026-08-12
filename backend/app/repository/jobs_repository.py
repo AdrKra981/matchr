@@ -8,12 +8,12 @@ INSERT_SQL = """
     INSERT INTO jobs (
         external_id, slug, title, company_name, city, workplace_type,
         experience_level, salary_from, salary_to, salary_currency,
-        employment_type, url, description, skills, raw, published_at, expires_at
+        employment_type, search_query, url, description, skills, raw, published_at, expires_at
     )
     VALUES (
         %(external_id)s, %(slug)s, %(title)s, %(company_name)s, %(city)s,
         %(workplace_type)s, %(experience_level)s, %(salary_from)s, %(salary_to)s,
-        %(salary_currency)s, %(employment_type)s, %(url)s, %(description)s,
+        %(salary_currency)s, %(employment_type)s, %(search_query)s, %(url)s, %(description)s,
         %(skills)s, %(raw)s, %(published_at)s, %(expires_at)s
     )
     ON CONFLICT (external_id) DO UPDATE SET
@@ -22,6 +22,7 @@ INSERT_SQL = """
         salary_to = EXCLUDED.salary_to,
         description = EXCLUDED.description,
         raw = EXCLUDED.raw,
+        search_query = EXCLUDED.search_query,
         fetched_at = now();
 """
 
@@ -48,9 +49,9 @@ def get_jobs_for_indexing() -> list[JobIndexItem]:
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT id, title, description FROM jobs")
+            cur.execute("SELECT id, title, description, search_query FROM jobs")
             rows = cur.fetchall()
-            return [JobIndexItem(id=r[0], title=r[1], description=r[2]) for r in rows]
+            return [JobIndexItem(id=r[0], title=r[1], description=r[2], search_query=r[3]) for r in rows]
     finally:
         conn.close()
 
