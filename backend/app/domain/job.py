@@ -19,6 +19,7 @@ class Job:
     experience_level: str | None = None
     workplace_type: str | None = None
     employment_type: str | None = None
+    search_query: str | None = None
     expires_at: str | None = None
 
     

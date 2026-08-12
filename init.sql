@@ -12,6 +12,7 @@ CREATE TABLE jobs (
     salary_to INTEGER,
     salary_currency TEXT,
     employment_type TEXT,
+    search_query TEXT,
     url TEXT,
     description TEXT,
     skills JSONB,
