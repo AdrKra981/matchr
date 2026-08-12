@@ -8,9 +8,6 @@ then uses an LLM to explain *why* each offer fits and *what your CV is missing* 
 > RAG-style retrieval, vector search, LLM structured outputs, and a clean,
 > layered backend behind a Next.js frontend — all running in Docker.
 
-<!-- TODO: wstaw zrzut ekranu lub GIF działania aplikacji -->
-<!-- ![Matchr screenshot](docs/screenshot.png) -->
-
 ## How it works
 
 Matching happens in **two complementary layers**:
@@ -57,30 +54,30 @@ and [Adzuna](https://developer.adzuna.com) (both have free tiers).
 
 1. Create `.env` in the project root (see `.env.example`):
 
-   ```env
+```env
    POSTGRES_USER=matchr
    POSTGRES_PASSWORD=change_me
    POSTGRES_DB=matchr
    OPENAI_API_KEY=sk-...
    ADZUNA_APP_ID=...
    ADZUNA_APP_KEY=...
-   ```
+```
 
 2. Start the backend stack (FastAPI + PostgreSQL + Qdrant + Redis):
 
-   ```bash
+```bash
    docker compose up --build
-   ```
+```
 
    API docs: http://localhost:8000/docs · Qdrant dashboard: http://localhost:6333/dashboard
 
 3. Start the frontend:
 
-   ```bash
+```bash
    cd frontend
    npm install
    npm run dev
-   ```
+```
 
    App: http://localhost:3000
 
@@ -111,17 +108,28 @@ presentational components composed by a thin page.
 **Design highlights:**
 - **Deduplication** at two levels — `ON CONFLICT (external_id)` in Postgres and
   point-id upsert in Qdrant.
-- **Search-scoped ranking** via Qdrant **metadata filtering** (`search_query` in the
-  payload), so switching the searched role changes the candidate pool without
-  deleting history.
+- **Composable metadata filters** on the vector search — the ranking is scoped by a
+  Qdrant filter built dynamically from whatever the user provides (`search_query`,
+  `city`, minimum salary), combined with `AND` semantics. Switching the role or
+  filters changes the candidate pool without deleting history, and adding a new filter
+  is one condition away.
 - **Redis caching** of fetched offers and (expensive) LLM explanations, keyed by a
   hash of the inputs, plus rate limiting on the external API.
 - **Structured LLM outputs** (Pydantic) — no fragile string parsing.
 
-## Possible extensions
+## Roadmap
 
-- Deduplicate near-duplicate offers (same role reposted under different IDs) by
-  `title + company`.
+**Multi-user authentication (next major step).** Turn Matchr from a single-user tool
+into a real multi-tenant app: accounts with email/password (hashed with `bcrypt`) or
+OAuth, JWT-based sessions, and protected endpoints. The core of the work is **scoping
+every piece of data by `user_id`** — CVs, matches, and per-user job pools — so one user
+can never see another's data. Because ranking already runs through a composable Qdrant
+filter, per-user isolation is largely *one more condition* (`user_id` in the payload +
+filter) — exactly the "shared collection, filter by owner" pattern that vector
+databases are designed for.
+
+**Other ideas:**
+- Deduplicate near-duplicate offers (same role reposted under different IDs) by `title + company`.
 - Scheduled daily runs that fetch new offers and email the best new matches.
 - Support more job sources behind the existing `JobSource` interface.
 - Generate a tailored cover letter per offer; track applications.

@@ -13,8 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MatchR",
-  description: "Find your dream job with MatchR",
+  title: "Matchr — AI job matching",
+  description:
+    "Upload your CV and find the job offers that actually fit it, with an explanation of why.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -23,7 +24,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="bg-surface text-ink min-h-full flex flex-col">
+        {children}
+      </body>
     </html>
   );
 }
