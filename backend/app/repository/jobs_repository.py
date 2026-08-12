@@ -49,9 +49,9 @@ def get_jobs_for_indexing() -> list[JobIndexItem]:
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT id, title, description, search_query FROM jobs")
+            cur.execute("SELECT id, title, description, search_query, city, salary_from FROM jobs")
             rows = cur.fetchall()
-            return [JobIndexItem(id=r[0], title=r[1], description=r[2], search_query=r[3]) for r in rows]
+            return [JobIndexItem(id=r[0], title=r[1], description=r[2], search_query=r[3], city=r[4], salary_from=r[5]) for r in rows]
     finally:
         conn.close()
 

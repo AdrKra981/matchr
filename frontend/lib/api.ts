@@ -1,28 +1,51 @@
 import { API_URL } from "./config";
-import { Match } from "./types";
+import { CvUploadResult, Match, RankParams } from "./types";
 
-export async function uploadCv(file: File) {
+/** FastAPI puts its error text in `detail`; fall back to the status code. */
+async function errorMessage(res: Response): Promise<string> {
+    try {
+        const body = await res.json();
+        if (typeof body?.detail === "string") return body.detail;
+    } catch {
+        // Body wasn't JSON — the status code is all we have.
+    }
+    return `Request failed (${res.status})`;
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+    let res: Response;
+    try {
+        res = await fetch(`${API_URL}${path}`, init);
+    } catch {
+        // fetch only rejects on network-level failure, so this is the
+        // "backend isn't running" case rather than a bad response.
+        throw new Error("Cannot reach the server. Is the backend running?");
+    }
+    if (!res.ok) throw new Error(await errorMessage(res));
+    return res.json() as Promise<T>;
+}
+
+export function uploadCv(file: File): Promise<CvUploadResult> {
     const fd = new FormData();
     fd.append("file", file);
-    const res = await fetch(`${API_URL}/cv/upload`, { method: "POST", body: fd });
-    if (!res.ok) throw new Error("Upload CV nieudany");
-    return res.json();
+    return request<CvUploadResult>("/cv/upload", { method: "POST", body: fd });
 }
 
 export const fetchJobs = (what: string) =>
-    fetch(`${API_URL}/jobs/fetch?what=${encodeURIComponent(what)}`, { method: "POST" }).then(r => r.json());
+    request(`/jobs/fetch?what=${encodeURIComponent(what)}`, { method: "POST" });
 
-export const indexJobs = () =>
-    fetch(`${API_URL}/jobs/index`, { method: "POST" }).then(r => r.json());
+export const indexJobs = () => request("/jobs/index", { method: "POST" });
 
-export const rankMatches = (topK = 10, what?: string) => {
+export const rankMatches = ({ topK = 10, what, city, minSalary }: RankParams = {}) => {
     const params = new URLSearchParams({ top_k: String(topK) });
     if (what) params.append("what", what);
-    return fetch(`${API_URL}/matches/rank?${params}`, { method: "POST" }).then(r => r.json());
+    if (city) params.append("city", city);
+    // The backend parameter is `min_salary`; sending `minSalary` here meant
+    // FastAPI silently dropped it and the filter never applied.
+    if (minSalary !== undefined) params.append("min_salary", String(minSalary));
+    return request(`/matches/rank?${params}`, { method: "POST" });
 };
 
-export const explainMatches = () =>
-    fetch(`${API_URL}/matches/explain`, { method: "POST" }).then(r => r.json());
+export const explainMatches = () => request("/matches/explain", { method: "POST" });
 
-export const getMatches = (): Promise<Match[]> =>
-    fetch(`${API_URL}/matches`).then(r => r.json());
+export const getMatches = () => request<Match[]>("/matches");

@@ -6,3 +6,6 @@ class JobIndexItem:
     title: str
     description: str | None = None
     search_query: str | None = None
+    city: str | None = None
+    salary_from: int | None = None
+    
