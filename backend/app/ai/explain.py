@@ -1,8 +1,12 @@
+from functools import lru_cache
 from pydantic import BaseModel, Field
 from openai import OpenAI
 
-client = OpenAI()
 MODEL = "gpt-4o-mini"
+
+@lru_cache(maxsize=1)
+def get_client() -> OpenAI:
+    return OpenAI()
 
 
 class MatchExplanation(BaseModel):
@@ -12,7 +16,7 @@ class MatchExplanation(BaseModel):
 
 
 def explain_match(cv_text: str, job_title: str, job_description: str) -> MatchExplanation:
-    completion = client.beta.chat.completions.parse(
+    completion = get_client().beta.chat.completions.parse(
         model=MODEL,
         messages=[
             {"role": "system", "content": (

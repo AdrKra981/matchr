@@ -1,12 +1,16 @@
+from functools import lru_cache
 from qdrant_client import QdrantClient
 from qdrant_client.models import VectorParams, Distance, Filter, FieldCondition, MatchValue, Range
 
-qdrant = QdrantClient(host="qdrant", port=6333)
 COLLECTION = "jobs"
 
+@lru_cache(maxsize=1)
+def get_client() -> QdrantClient:
+    return QdrantClient(host="qdrant", port=6333)
+
 def ensure_collection():
-    if not qdrant.collection_exists(COLLECTION):
-        qdrant.create_collection(
+    if not get_client().collection_exists(COLLECTION):
+        get_client().create_collection(
             COLLECTION,
             vectors_config=VectorParams(size=1536, distance=Distance.COSINE),
         )
@@ -30,7 +34,7 @@ def build_filter(
 
 
 def search_jobs(vector: list[float], top_k: int = 10, query_filter: Filter | None = None):
-    response = qdrant.query_points(
+    response = get_client().query_points(
         collection_name=COLLECTION,
         query=vector,
         limit=top_k,

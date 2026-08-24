@@ -7,3 +7,5 @@ openai
 pypdf
 python-multipart
 qdrant-client
+pytest
+httpx
