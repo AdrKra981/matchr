@@ -103,10 +103,9 @@ export default function StepCv({ cv, onUploaded, onContinue }: Props) {
           className={`group flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl
             border-2 border-dashed px-6 py-14 text-center transition-colors duration-150
             peer-focus-visible:border-accent
-            ${
-              dragging
-                ? "border-accent bg-accent-soft"
-                : "border-line-strong bg-raised hover:border-accent"
+            ${dragging
+              ? "border-accent bg-accent-soft"
+              : "border-line-strong bg-raised hover:border-accent"
             }`}
         >
           <span className="flex size-12 items-center justify-center rounded-full bg-accent-soft text-accent">
