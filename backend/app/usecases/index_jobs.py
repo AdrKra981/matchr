@@ -1,5 +1,5 @@
 from qdrant_client.models import PointStruct
-from app.vectordb import qdrant, ensure_collection, COLLECTION
+from app.vectordb import get_client, ensure_collection, COLLECTION
 from app.ai.embeddings import embed
 from app.repository.jobs_repository import get_jobs_for_indexing
 
@@ -18,6 +18,6 @@ def index_jobs() -> dict:
         ))
 
     if points:
-        qdrant.upsert(collection_name=COLLECTION, points=points)
+        get_client().upsert(collection_name=COLLECTION, points=points)
 
     return {"indexed": len(points)}
