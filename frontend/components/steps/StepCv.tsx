@@ -2,7 +2,7 @@
 import { ChangeEvent, DragEvent, useId, useState } from "react";
 import { AlertCircle, ArrowRight, FileText, Loader2, Upload } from "lucide-react";
 import { uploadCv } from "@/lib/api";
-import { messageOf } from "@/lib/usePipeline";
+import { messageOf } from "@/lib/errors";
 import { CvSummary } from "@/lib/types";
 import Button from "../ui/Button";
 

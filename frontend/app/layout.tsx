@@ -12,6 +12,13 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+/**
+ * Every response carries a fresh CSP nonce generated in proxy.ts. A statically
+ * rendered page would bake one nonce into the HTML at build time and then serve
+ * it against a different nonce in the header, so nothing would run.
+ */
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Matchr — AI job matching",
   description:

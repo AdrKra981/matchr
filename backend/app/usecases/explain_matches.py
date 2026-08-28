@@ -19,10 +19,10 @@ def _explain_cached(cv_text: str, job_title: str, job_description: str) -> dict:
     redis_client.setex(key, 86400, json.dumps(result)) 
     return result
 
-def explain_matches() -> dict:
-    cv = get_latest_cv()
+def explain_matches(user_id: int) -> dict:
+    cv = get_latest_cv(user_id)
     if cv is None:
-        raise HTTPException(status_code=400, detail="Najpierw wgraj CV i odpal ranking")
+        raise HTTPException(status_code=400, detail="No CV uploaded")
 
     matches = get_matches_for_cv(cv["id"])
 

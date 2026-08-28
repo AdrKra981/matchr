@@ -22,11 +22,19 @@ CREATE TABLE jobs (
     fetched_at TIMESTAMPTZ DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS cv (
     id SERIAL PRIMARY KEY,
     filename TEXT,
     content TEXT NOT NULL,
     embedding JSONB NOT NULL,
+    user_id INTEGER REFERENCES users(id)
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -37,5 +45,6 @@ CREATE TABLE IF NOT EXISTS matches (
     score REAL,
     rank INTEGER,
     explanation JSONB,
+    user_id INTEGER REFERENCES users(id)
     created_at TIMESTAMPTZ DEFAULT now()
 );
