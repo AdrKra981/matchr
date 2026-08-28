@@ -1,5 +1,5 @@
-import { API_URL } from "./config";
-import { CvUploadResult, Match, RankParams } from "./types";
+import { API_BASE } from "./config";
+import { CvUploadResult, Match, RankParams, User } from "./types";
 
 /** FastAPI puts its error text in `detail`; fall back to the status code. */
 async function errorMessage(res: Response): Promise<string> {
@@ -12,18 +12,76 @@ async function errorMessage(res: Response): Promise<string> {
     return `Request failed (${res.status})`;
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+/**
+ * Sends the browser to the login page after the session has gone.
+ *
+ * The cookie is already cleared by the time a 401 reaches us, so a full
+ * navigation is the honest move: it drops all in-memory state belonging to the
+ * signed-out user rather than leaving a half-populated wizard on screen.
+ */
+function bounceToLogin(): void {
+    if (typeof window === "undefined") return;
+    const next = window.location.pathname;
+    const params = new URLSearchParams({ expired: "1" });
+    if (next !== "/") params.set("next", next);
+    // A hard navigation rather than router.push, and deliberately so: this
+    // tears down the React tree, which is the only way to guarantee the
+    // previous user's uploaded CV and match list leave the page with them.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+    window.location.href = `/login?${params}`;
+}
+
+interface RequestOptions {
+    /** Login and register handle their own 401s, in the form. */
+    bounceOn401?: boolean;
+}
+
+async function request<T>(
+    path: string,
+    init?: RequestInit,
+    { bounceOn401 = true }: RequestOptions = {},
+): Promise<T> {
     let res: Response;
     try {
-        res = await fetch(`${API_URL}${path}`, init);
+        res = await fetch(`${API_BASE}${path}`, {
+            ...init,
+            // Same-origin now, so the session cookie rides along on its own —
+            // being explicit keeps that a decision rather than a default.
+            credentials: "same-origin",
+        });
     } catch {
         // fetch only rejects on network-level failure, so this is the
-        // "backend isn't running" case rather than a bad response.
+        // "the app itself is unreachable" case rather than a bad response.
         throw new Error("Cannot reach the server. Is the backend running?");
     }
+
+    if (res.status === 401 && bounceOn401) {
+        bounceToLogin();
+        throw new Error("Your session has expired. Please sign in again.");
+    }
     if (!res.ok) throw new Error(await errorMessage(res));
+    if (res.status === 204) return undefined as T;
     return res.json() as Promise<T>;
 }
+
+/** POSTs JSON to a route handler, which rejects bodies from other origins. */
+export function postJson<T>(
+    path: string,
+    body: unknown,
+    options?: RequestOptions,
+): Promise<T> {
+    return request<T>(
+        path,
+        {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(body),
+        },
+        options,
+    );
+}
+
+export const post = <T>(path: string) => request<T>(path, { method: "POST" });
 
 export function uploadCv(file: File): Promise<CvUploadResult> {
     const fd = new FormData();
@@ -32,9 +90,9 @@ export function uploadCv(file: File): Promise<CvUploadResult> {
 }
 
 export const fetchJobs = (what: string) =>
-    request(`/jobs/fetch?what=${encodeURIComponent(what)}`, { method: "POST" });
+    post(`/jobs/fetch?what=${encodeURIComponent(what)}`);
 
-export const indexJobs = () => request("/jobs/index", { method: "POST" });
+export const indexJobs = () => post("/jobs/index");
 
 export const rankMatches = ({ topK = 10, what, city, minSalary }: RankParams = {}) => {
     const params = new URLSearchParams({ top_k: String(topK) });
@@ -43,9 +101,11 @@ export const rankMatches = ({ topK = 10, what, city, minSalary }: RankParams = {
     // The backend parameter is `min_salary`; sending `minSalary` here meant
     // FastAPI silently dropped it and the filter never applied.
     if (minSalary !== undefined) params.append("min_salary", String(minSalary));
-    return request(`/matches/rank?${params}`, { method: "POST" });
+    return post(`/matches/rank?${params}`);
 };
 
-export const explainMatches = () => request("/matches/explain", { method: "POST" });
+export const explainMatches = () => post("/matches/explain");
 
 export const getMatches = () => request<Match[]>("/matches");
+
+export const getCurrentUser = () => request<User>("/auth/me");

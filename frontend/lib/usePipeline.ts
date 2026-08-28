@@ -1,15 +1,12 @@
 "use client";
 import { useCallback, useState } from "react";
 import { explainMatches, fetchJobs, indexJobs, rankMatches } from "./api";
+import { messageOf } from "./errors";
 import { FilterState, PipelineStage } from "./types";
 
 export interface StageError {
     stage: PipelineStage;
     message: string;
-}
-
-export function messageOf(error: unknown): string {
-    return error instanceof Error ? error.message : "Something went wrong.";
 }
 
 /**

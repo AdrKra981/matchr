@@ -11,6 +11,10 @@ interface Props {
   error?: string;
   icon?: LucideIcon;
   inputMode?: "text" | "numeric";
+  type?: "text" | "email" | "password";
+  /** Lets password managers recognise the field — see the auth forms. */
+  autoComplete?: string;
+  required?: boolean;
 }
 
 export default function Field({
@@ -22,6 +26,9 @@ export default function Field({
   error,
   icon: Icon,
   inputMode = "text",
+  type = "text",
+  autoComplete,
+  required,
 }: Props) {
   const id = useId();
   const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
@@ -41,6 +48,9 @@ export default function Field({
         )}
         <input
           id={id}
+          type={type}
+          autoComplete={autoComplete}
+          required={required}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}

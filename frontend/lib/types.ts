@@ -1,3 +1,14 @@
+export interface User {
+    id: number;
+    email: string;
+}
+
+/** What the login and register forms collect. Never persisted client-side. */
+export interface Credentials {
+    email: string;
+    password: string;
+}
+
 export interface Explanation {
     match_score: number;
     strengths: string[];
