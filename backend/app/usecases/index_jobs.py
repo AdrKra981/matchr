@@ -1,7 +1,9 @@
 from qdrant_client.models import PointStruct
-from app.vectordb import get_client, ensure_collection, COLLECTION
+
 from app.ai.embeddings import embed
 from app.repository.jobs_repository import get_jobs_for_indexing
+from app.vectordb import COLLECTION, ensure_collection, get_client
+
 
 def index_jobs() -> dict:
     ensure_collection()

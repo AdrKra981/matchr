@@ -1,6 +1,14 @@
 from functools import lru_cache
+
 from qdrant_client import QdrantClient
-from qdrant_client.models import VectorParams, Distance, Filter, FieldCondition, MatchValue, Range
+from qdrant_client.models import (
+    Distance,
+    FieldCondition,
+    Filter,
+    MatchValue,
+    Range,
+    VectorParams,
+)
 
 COLLECTION = "jobs"
 

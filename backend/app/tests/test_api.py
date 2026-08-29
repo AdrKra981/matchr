@@ -1,9 +1,10 @@
 import pytest
 from fastapi.testclient import TestClient
-from app.main import app
+
+import app.api.matches as matches_api
 from app.auth.deps import get_current_user
 from app.domain.user import User
-import app.api.matches as matches_api
+from app.main import app
 
 client = TestClient(app)
 

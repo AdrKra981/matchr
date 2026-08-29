@@ -1,4 +1,5 @@
 from functools import lru_cache
+
 from openai import OpenAI
 
 EMBED_MODEL = "text-embedding-3-small"

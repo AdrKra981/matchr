@@ -1,17 +1,18 @@
+from psycopg.types.json import Json
+
 from app.db import get_connection
-from psycopg.types.json import Json  
+
 
 def save_matches(cv_id: int, matches: list[dict], user_id: int) -> int:
     conn = get_connection()
     try:
-        with conn:
-            with conn.cursor() as cur:
-                cur.execute("DELETE FROM matches WHERE cv_id = %s", (cv_id,))
-                for m in matches:
-                    cur.execute(
-                        "INSERT INTO matches (cv_id, job_id, score, rank, user_id) VALUES (%s, %s, %s, %s, %s)",
-                        (cv_id, m["job_id"], m["score"], m["rank"], user_id),
-                    )
+        with conn, conn.cursor() as cur:
+            cur.execute("DELETE FROM matches WHERE cv_id = %s", (cv_id,))
+            for m in matches:
+                cur.execute(
+                    "INSERT INTO matches (cv_id, job_id, score, rank, user_id) VALUES (%s, %s, %s, %s, %s)",
+                    (cv_id, m["job_id"], m["score"], m["rank"], user_id),
+                )
         return len(matches)
     finally:
         conn.close()
@@ -20,7 +21,7 @@ def save_matches(cv_id: int, matches: list[dict], user_id: int) -> int:
 def get_matches_for_cv(cv_id: int) -> list[dict]:
     conn = get_connection()
     try:
-        with conn.cursor() as cur:
+        with conn, conn.cursor() as cur:
             cur.execute("SELECT id, job_id FROM matches WHERE cv_id = %s ORDER BY rank", (cv_id,))
             return [{"id": r[0], "job_id": r[1]} for r in cur.fetchall()]
     finally:
@@ -29,19 +30,18 @@ def get_matches_for_cv(cv_id: int) -> list[dict]:
 def update_explanation(match_id: int, explanation: dict) -> None:
     conn = get_connection()
     try:
-        with conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    "UPDATE matches SET explanation = %s WHERE id = %s",
-                    (Json(explanation), match_id),
-                )
+        with conn, conn.cursor() as cur:
+            cur.execute(
+                "UPDATE matches SET explanation = %s WHERE id = %s",
+                (Json(explanation), match_id),
+            )
     finally:
         conn.close()
 
 def get_ranking(user_id: int) -> list[dict]:
     conn = get_connection()
     try:
-        with conn.cursor() as cur:
+        with conn, conn.cursor() as cur:
             cur.execute("""
                 SELECT m.rank, m.score, m.explanation,
                        j.title, j.company_name, j.city, j.url,

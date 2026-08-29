@@ -1,8 +1,10 @@
-from app.domain.job_index_item import JobIndexItem
 from dataclasses import asdict
-from app.domain.job import Job
+
 from psycopg.types.json import Json
+
 from app.db import get_connection
+from app.domain.job import Job
+from app.domain.job_index_item import JobIndexItem
 
 INSERT_SQL = """
     INSERT INTO jobs (
@@ -31,16 +33,15 @@ def save_jobs(jobs: list[Job]) -> int:
     saved = 0
     conn = get_connection()
     try:
-        with conn:
-            with conn.cursor() as cur:
-                for job in jobs:
-                    params = {
-                        **asdict(job),
-                        "raw": Json(job.raw),
-                        "skills": Json(job.skills) if job.skills is not None else None,
-                    }
-                    cur.execute(INSERT_SQL, params)
-                    saved += 1
+        with conn, conn.cursor() as cur:
+            for job in jobs:
+                params = {
+                    **asdict(job),
+                    "raw": Json(job.raw),
+                    "skills": Json(job.skills) if job.skills is not None else None,
+                }
+                cur.execute(INSERT_SQL, params)
+                saved += 1
     finally:
         conn.close()
     return saved

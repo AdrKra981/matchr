@@ -1,8 +1,8 @@
-from fastapi import Depends
-from fastapi import APIRouter, UploadFile, File
-from app.usecases.analyze_cv import analyze_cv
+from fastapi import APIRouter, Depends, File, UploadFile
+
 from app.auth.deps import get_current_user
 from app.domain.user import User
+from app.usecases.analyze_cv import analyze_cv
 
 router = APIRouter(prefix="/cv", tags=["cv"])
 

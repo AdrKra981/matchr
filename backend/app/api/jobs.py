@@ -1,9 +1,9 @@
-from app.usecases.index_jobs import index_jobs
-from fastapi import APIRouter
-from app.usecases.fetch_jobs import fetch_and_store_jobs
+from fastapi import APIRouter, Depends
+
 from app.auth.deps import get_current_user
 from app.domain.user import User
-from fastapi import APIRouter, Depends
+from app.usecases.fetch_jobs import fetch_and_store_jobs
+from app.usecases.index_jobs import index_jobs
 
 router = APIRouter(prefix='/jobs', tags=['jobs'])
 

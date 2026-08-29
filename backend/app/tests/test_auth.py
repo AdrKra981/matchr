@@ -12,7 +12,7 @@ import jwt
 import pytest
 from fastapi.testclient import TestClient
 
-import app.auth.deps as deps
+from app.auth import deps
 from app.auth.security import JWT_ALGORITHM, JWT_SECRET, create_access_token
 from app.main import app
 
@@ -33,8 +33,6 @@ def auth(token):
 
 
 def test_protected_endpoint_requires_a_token():
-    # Which of the two FastAPI returns has changed across versions; that it
-    # refuses to serve the request is the part worth pinning.
     assert client.get(PROTECTED).status_code in (401, 403)
 
 
@@ -42,15 +40,12 @@ BAD_TOKENS = [
     ("garbage", "not-a-token"),
     ("empty-ish", "x"),
     ("tampered signature", sign({"sub": "1"})[:-4] + "AAAA"),
-    # Long enough to avoid PyJWT's InsecureKeyLengthWarning; the point of
-    # this case is that the secret is the wrong one, not that it is weak.
-    ("signed with another secret", sign({"sub": "1"}, secret="a-different-secret-of-at-least-32-bytes")),
+    ("signed with another secret", sign({"sub": "1"}, secret="attacker-secret")),
     ("expired", sign({"sub": "1", "exp": datetime.datetime.now(timezone.utc) - timedelta(hours=1)})),
     ("alg=none forgery", sign({"sub": "1"}, secret=None, algorithm="none")),
 ]
 
 
-# Explicit ids: without them pytest names each case after the whole JWT.
 @pytest.mark.parametrize("case, token", BAD_TOKENS, ids=[c for c, _ in BAD_TOKENS])
 def test_bad_tokens_are_rejected_with_401(case, token):
     """
@@ -76,8 +71,6 @@ def test_valid_token_resolves_the_user(monkeypatch):
 
 
 def test_token_for_a_deleted_user_is_rejected(monkeypatch):
-    # A token outlives the account it names: it stays validly signed for 24h
-    # after the row is gone.
     monkeypatch.setattr(deps, "get_user_by_id", lambda user_id: None)
     r = client.get(PROTECTED, headers=auth(create_access_token(999)))
     assert r.status_code == 401

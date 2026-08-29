@@ -1,9 +1,9 @@
-from app.auth.deps import get_current_user
-from app.domain.user import User
-from fastapi import Depends
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr
-from app.auth.security import hash_password, verify_password, create_access_token
+
+from app.auth.deps import get_current_user
+from app.auth.security import create_access_token, hash_password, verify_password
+from app.domain.user import User
 from app.repository.user_repository import create_user, get_user_by_email
 
 router = APIRouter(prefix='/auth', tags=['auth'])

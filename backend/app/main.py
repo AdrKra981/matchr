@@ -1,10 +1,10 @@
 from fastapi import FastAPI
-from app.api.jobs import router as jobs_router
-from app.api.cv import router as cv_routes
-from app.api.matches import router as matches_router
-from app.api.auth import router as auth_router
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.auth import router as auth_router
+from app.api.cv import router as cv_routes
+from app.api.jobs import router as jobs_router
+from app.api.matches import router as matches_router
 
 app = FastAPI()
 
