@@ -1,5 +1,6 @@
 from app.db import get_connection
 
+
 def create_user(email: str, password_hash: str) -> int:
     conn = get_connection()
     try:

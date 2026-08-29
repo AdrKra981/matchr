@@ -12,3 +12,4 @@ httpx
 bcrypt
 email-validator
 PyJWT
+ruff

@@ -1,7 +1,9 @@
 from fastapi import HTTPException
+
 from app.repository.cv_repository import get_latest_cv
 from app.repository.matches_repository import save_matches
-from app.vectordb import search_jobs, build_filter
+from app.vectordb import build_filter, search_jobs
+
 
 def rank_jobs(
     user_id: int,

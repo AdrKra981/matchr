@@ -1,6 +1,7 @@
 from functools import lru_cache
-from pydantic import BaseModel, Field
+
 from openai import OpenAI
+from pydantic import BaseModel, Field
 
 MODEL = "gpt-4o-mini"
 

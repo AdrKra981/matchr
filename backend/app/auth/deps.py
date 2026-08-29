@@ -1,10 +1,10 @@
 ﻿import jwt
 from fastapi import Depends, HTTPException
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.auth.security import decode_access_token
-from app.repository.user_repository import get_user_by_id
 from app.domain.user import User
+from app.repository.user_repository import get_user_by_id
 
 bearer = HTTPBearer()
 

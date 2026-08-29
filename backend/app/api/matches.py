@@ -1,9 +1,10 @@
+from fastapi import APIRouter, Depends
+
 from app.auth.deps import get_current_user
 from app.domain.user import User
-from fastapi import APIRouter, Depends
-from app.usecases.rank_jobs import rank_jobs
-from app.usecases.explain_matches import explain_matches
 from app.repository.matches_repository import get_ranking
+from app.usecases.explain_matches import explain_matches
+from app.usecases.rank_jobs import rank_jobs
 
 router = APIRouter(prefix="/matches", tags=["matches"])
 

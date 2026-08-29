@@ -1,6 +1,8 @@
 import requests
+
 from app.domain.job import Job
 from app.sources.base import JobSource
+
 
 class AdzunaSource(JobSource):
     def __init__(self, app_id: str, app_key: str):

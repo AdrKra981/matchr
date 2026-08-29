@@ -1,4 +1,5 @@
 import pytest
+
 from app.sources.adzuna import AdzunaSource
 
 SAMPLE = {

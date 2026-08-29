@@ -1,6 +1,8 @@
-import pytest
 from types import SimpleNamespace
+
+import pytest
 from fastapi import HTTPException
+
 from app.usecases import rank_jobs as rj
 
 USER_ID = 7

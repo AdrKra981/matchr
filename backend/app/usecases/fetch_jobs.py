@@ -1,8 +1,10 @@
 import os
-from app.sources.adzuna import AdzunaSource
-from app.repository.jobs_repository import save_jobs
-from app.cache import redis_client
+
 from fastapi import HTTPException
+
+from app.cache import redis_client
+from app.repository.jobs_repository import save_jobs
+from app.sources.adzuna import AdzunaSource
 
 
 def check_rate_limit(max_calls: int = 30, window_seconds: int = 3600):
