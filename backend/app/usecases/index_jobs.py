@@ -1,9 +1,12 @@
+import logging
+
 from qdrant_client.models import PointStruct
 
 from app.ai.embeddings import embed
 from app.repository.jobs_repository import get_jobs_for_indexing
 from app.vectordb import COLLECTION, ensure_collection, get_client
 
+logger = logging.getLogger(__name__)
 
 def index_jobs() -> dict:
     ensure_collection()
@@ -22,4 +25,5 @@ def index_jobs() -> dict:
     if points:
         get_client().upsert(collection_name=COLLECTION, points=points)
 
+    logger.info("Jobs indexed", extra={"count": len(points)})
     return {"indexed": len(points)}

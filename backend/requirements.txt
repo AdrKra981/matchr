@@ -13,3 +13,5 @@ bcrypt
 email-validator
 PyJWT
 ruff
+python-json-logger
+prometheus-client
