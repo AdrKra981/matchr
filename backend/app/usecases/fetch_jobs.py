@@ -1,12 +1,12 @@
-import os
 import logging
+import os
 
 from fastapi import HTTPException
 
 from app.cache import redis_client
+from app.observability.metrics import cache_hits
 from app.repository.jobs_repository import save_jobs
 from app.sources.adzuna import AdzunaSource
-from app.observability.metrics import cache_hits
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ def fetch_and_store_jobs(what: str) -> dict:
     try:
         offers = source.fetch(what)
     except Exception:
-        logger.error("adzuna fetch failed", extra={"what": what}, exc_info=True)
+        logger.exception("adzuna fetch failed", extra={"what": what})
         raise HTTPException(status_code=502, detail="Job source unavailable")
 
     for job in offers:

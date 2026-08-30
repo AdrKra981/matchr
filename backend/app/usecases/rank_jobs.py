@@ -1,9 +1,9 @@
 from fastapi import HTTPException
 
+from app.observability.metrics import rank_latency
 from app.repository.cv_repository import get_latest_cv
 from app.repository.matches_repository import save_matches
 from app.vectordb import build_filter, search_jobs
-from app.observability.metrics import rank_latency
 
 
 def rank_jobs(

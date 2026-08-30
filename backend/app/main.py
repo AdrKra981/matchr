@@ -1,14 +1,15 @@
-from app.observability.request_id import RequestIdMiddleware
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_client import make_asgi_app
 
 from app.api.auth import router as auth_router
 from app.api.cv import router as cv_routes
 from app.api.jobs import router as jobs_router
 from app.api.matches import router as matches_router
 from app.observability.logging_config import setup_logging
-from prometheus_client import make_asgi_app
-import os
+from app.observability.request_id import RequestIdMiddleware
 
 setup_logging(os.getenv("LOG_LEVEL", "INFO"))
 

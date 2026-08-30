@@ -1,6 +1,8 @@
-from app.observability.request_id import RequestIdFilter
 import logging
+
+from app.observability.request_id import RequestIdFilter
 from pythonjsonlogger import jsonlogger
+
 
 def setup_logging(level: str = "INFO"):
     handler = logging.StreamHandler()

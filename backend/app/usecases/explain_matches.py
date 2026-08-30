@@ -1,15 +1,15 @@
 import hashlib
 import json
-import logging 
+import logging
 
 from fastapi import HTTPException
 
 from app.ai.explain import explain_match
 from app.cache import redis_client
+from app.observability.metrics import cache_hits
 from app.repository.cv_repository import get_latest_cv
 from app.repository.jobs_repository import get_job
 from app.repository.matches_repository import get_matches_for_cv, update_explanation
-from app.observability.metrics import cache_hits
 
 logger = logging.getLogger(__name__)
 
