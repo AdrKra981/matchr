@@ -8,6 +8,11 @@ from qdrant_client.models import (
     MatchValue,
     Range,
     VectorParams,
+    Modifier,
+    SparseVectorParams,
+    FusionQuery,
+    Fusion,
+    Prefetch
 )
 
 COLLECTION = "jobs"
@@ -20,7 +25,10 @@ def ensure_collection():
     if not get_client().collection_exists(COLLECTION):
         get_client().create_collection(
             COLLECTION,
-            vectors_config=VectorParams(size=1536, distance=Distance.COSINE),
+            vectors_config={"dense": VectorParams(size=1536, distance=Distance.COSINE),},
+            sparse_vectors_config={
+                "bm25": SparseVectorParams(modifier=Modifier.IDF)
+            }
         )
 
 def build_filter(
@@ -41,11 +49,14 @@ def build_filter(
     return Filter(must=conditions)
 
 
-def search_jobs(vector: list[float], top_k: int = 10, query_filter: Filter | None = None):
+def search_jobs(dense_vec: list[float], sparse_vec, top_k: int = 10, query_filter: Filter | None = None):
     response = get_client().query_points(
         collection_name=COLLECTION,
-        query=vector,
         limit=top_k,
-        query_filter=query_filter,
+        prefetch=[
+            Prefetch(query=dense_vec, using='dense', limit=top_k * 3, filter=query_filter),
+            Prefetch(query=sparse_vec, using='bm25', limit=top_k * 3, filter=query_filter),
+        ],
+        query=FusionQuery(fusion=Fusion.RRF),
     )
     return response.points

@@ -3,6 +3,7 @@ import logging
 from qdrant_client.models import PointStruct
 
 from app.ai.embeddings import embed
+from app.ai.sparse import embed_sparse
 from app.repository.jobs_repository import get_jobs_for_indexing
 from app.vectordb import COLLECTION, ensure_collection, get_client
 
@@ -14,12 +15,13 @@ def index_jobs() -> dict:
 
     points = []
     for item in items:
-        text = f"{item.title}\n{item.description or ''}"
-        vector = embed(text)
+        text = f"{item.title}\nSkills: {', '.join(item.skills or [])}\n{item.description or ''}"
+        dense_vec = embed(text)
+        sparse_vec = embed_sparse(text)
         points.append(PointStruct(
             id=item.id,
-            vector=vector,
-            payload={"job_id": item.id, "title": item.title, "search_query": item.search_query, "salary_from": item.salary_from, "city": item.city},
+            vector={"dense": dense_vec, "bm25": sparse_vec},
+            payload={"job_id": item.id, "title": item.title, "search_query": item.search_query, "salary_from": item.salary_from, "city": item.city, "skills": item.skills},
         ))
 
     if points:

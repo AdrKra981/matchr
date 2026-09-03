@@ -29,6 +29,15 @@ INSERT_SQL = """
 """
 
 
+def get_description(job_ids: list[int]) -> dict[int, str]:
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, description FROM jobs WHERE id = ANY(%s)", (job_ids,))
+            return {r[0]: r[1] or "" for r in cur.fetchall()}
+    finally:
+        conn.close()
+
 def save_jobs(jobs: list[Job]) -> int:
     saved = 0
     conn = get_connection()
@@ -50,9 +59,9 @@ def get_jobs_for_indexing() -> list[JobIndexItem]:
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT id, title, description, search_query, city, salary_from FROM jobs")
+            cur.execute("SELECT id, title, description, search_query, city, salary_from, skills FROM jobs")
             rows = cur.fetchall()
-            return [JobIndexItem(id=r[0], title=r[1], description=r[2], search_query=r[3], city=r[4], salary_from=r[5]) for r in rows]
+            return [JobIndexItem(id=r[0], title=r[1], description=r[2], search_query=r[3], city=r[4], salary_from=r[5], skills=r[6]) for r in rows]
     finally:
         conn.close()
 
