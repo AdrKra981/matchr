@@ -9,4 +9,5 @@ class JobIndexItem:
     search_query: str | None = None
     city: str | None = None
     salary_from: int | None = None
+    skills: list[str] | None = None
     

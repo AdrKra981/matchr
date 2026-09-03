@@ -15,3 +15,4 @@ PyJWT
 ruff
 python-json-logger
 prometheus-client
+fastembed
