@@ -4,7 +4,7 @@ from app.ai.rerank import rerank
 from app.ai.sparse import embed_sparse
 from app.observability.metrics import rank_latency
 from app.repository.cv_repository import get_latest_cv
-from app.repository.jobs_repository import get_description
+from app.repository.jobs_repository import get_descriptions
 from app.repository.matches_repository import save_matches
 from app.vectordb import build_filter, search_jobs
 
@@ -28,7 +28,7 @@ def rank_jobs(
         points = search_jobs(cv["embedding"], sparse_vec, CANDIDATE_POOL, query_filter)
 
         job_ids = [p.payload["job_id"] for p in points]
-        descriptions = get_description(job_ids)
+        descriptions = get_descriptions(job_ids)
         candidates = [
             {
                 "job_id": p.payload["job_id"],

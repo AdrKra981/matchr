@@ -29,7 +29,7 @@ INSERT_SQL = """
 """
 
 
-def get_description(job_ids: list[int]) -> dict[int, str]:
+def get_descriptions(job_ids: list[int]) -> dict[int, str]:
     conn = get_connection()
     try:
         with conn.cursor() as cur:
