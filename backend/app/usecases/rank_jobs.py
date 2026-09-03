@@ -1,12 +1,12 @@
 from fastapi import HTTPException
 
+from app.ai.rerank import rerank
+from app.ai.sparse import embed_sparse
 from app.observability.metrics import rank_latency
 from app.repository.cv_repository import get_latest_cv
 from app.repository.jobs_repository import get_description
 from app.repository.matches_repository import save_matches
 from app.vectordb import build_filter, search_jobs
-from app.ai.rerank import rerank
-from app.ai.sparse import embed_sparse
 
 CANDIDATE_POOL = 30
 FINAL_RANK = 10

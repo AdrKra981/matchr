@@ -1,4 +1,5 @@
 from functools import lru_cache
+
 from fastembed.rerank.cross_encoder import TextCrossEncoder
 
 

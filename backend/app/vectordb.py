@@ -5,14 +5,14 @@ from qdrant_client.models import (
     Distance,
     FieldCondition,
     Filter,
-    MatchValue,
-    Range,
-    VectorParams,
-    Modifier,
-    SparseVectorParams,
-    FusionQuery,
     Fusion,
-    Prefetch
+    FusionQuery,
+    MatchValue,
+    Modifier,
+    Prefetch,
+    Range,
+    SparseVectorParams,
+    VectorParams,
 )
 
 COLLECTION = "jobs"
