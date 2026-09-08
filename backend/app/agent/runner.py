@@ -1,11 +1,12 @@
-from functools import lru_cache
 import json
 import logging
+from functools import lru_cache
 
 from app.agent.tools import FETCH_JOBS_TOOL, RANK_JOBS_TOOL
 from app.usecases.fetch_jobs import fetch_and_store_jobs
 from app.usecases.rank_jobs import rank_jobs
 from openai import OpenAI
+
 
 @lru_cache(maxsize=1)
 def get_client() -> OpenAI:
