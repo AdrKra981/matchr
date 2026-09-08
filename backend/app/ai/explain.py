@@ -13,9 +13,9 @@ def get_client() -> OpenAI:
 
 
 class MatchExplanation(BaseModel):
-    match_score: int = Field(description="Dopasowanie CV do oferty w skali 0-100")
-    strengths: list[str] = Field(description="Elementy CV pasujące do oferty")
-    gaps: list[str] = Field(description="Czego brakuje w CV względem oferty")      
+    match_score: int = Field(description="Match of CV to the job offer on a scale of 0-100")
+    strengths: list[str] = Field(description="Elements of the CV that match the offer")
+    gaps: list[str] = Field(description="What is missing in the CV compared to the offer")      
 
 
 def explain_match(cv_text: str, job_title: str, job_description: str) -> MatchExplanation:
@@ -24,15 +24,18 @@ def explain_match(cv_text: str, job_title: str, job_description: str) -> MatchEx
         model=MODEL,
         messages=[
             {"role": "system", "content": (
-                "Jesteś doradcą kariery. Oceń dopasowanie kandydata (na podstawie CV) "
-                "do oferty pracy. Zwróć: dopasowanie 0-100, mocne strony (co z CV pasuje) "
-                "i braki (czego brakuje w CV względem oferty). Odpowiadaj po polsku, konkretnie."
+                "You are a career counselor. Assess the candidate's fit (based on their resume) "
+                "for the job opening. Note: fit on a scale of 0-100, strengths (what matches the job description) "
+                "and weaknesses. IMPORTANT: List weaknesses ONLY for requirements that are explicitly stated in the job posting, "
+                "and which are missing from the resume. Do not invent requirements that are not in the job posting. Strengths and weaknesses "
+                "must be based on the provided information, not on general knowledge. Respond in Polish, and be specific."
             )},
             {"role": "user", "content": (
-                f"CV KANDYDATA:\n{cv_text}\n\n"
-                f"OFERTA: {job_title}\n{job_description}"
+                f"CANDIDATE'S CV:\n{cv_text}\n\n"
+                f"JOB OFFER: {job_title}\n{job_description}"
             )},
         ],
         response_format=MatchExplanation,
+        temperature=0.0,
     )
     return completion.choices[0].message.parsed
