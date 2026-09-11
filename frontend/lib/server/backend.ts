@@ -4,6 +4,15 @@ import { clearSessionCookie, readSessionToken } from "./session";
 /** Preserved from the old client-side fetch, which said this on a dead backend. */
 const UNREACHABLE = "Cannot reach the server. Is the backend running?";
 
+export interface BackendOptions {
+    /**
+     * Hand the body to the client as it arrives instead of reading it all
+     * first. Only the agent needs this — buffering would hold its whole reply
+     * back until the run had finished.
+     */
+    stream?: boolean;
+}
+
 /**
  * Errors go out in FastAPI's `{ detail }` shape, because lib/api.ts already
  * knows how to read it — proxying should be invisible to the client.
@@ -22,11 +31,12 @@ export function detail(message: string, status: number): Response {
 export async function callBackend(
     path: string,
     init: RequestInit = {},
+    options: BackendOptions = {},
 ): Promise<Response> {
     const token = await readSessionToken();
     // Refuse locally rather than letting the backend answer an anonymous call.
     if (!token) return detail("Not signed in.", 401);
-    return forward(path, init, token);
+    return forward(path, init, token, options);
 }
 
 /** For /auth/login and /auth/register only — the two calls with no session yet. */
@@ -41,6 +51,7 @@ async function forward(
     path: string,
     init: RequestInit,
     token: string | undefined,
+    { stream = false }: BackendOptions = {},
 ): Promise<Response> {
     const headers = new Headers(init.headers);
     if (token) headers.set("Authorization", `Bearer ${token}`);
@@ -75,11 +86,19 @@ async function forward(
     // gets a flat message and the detail stays in the backend's own logs.
     if (res.status >= 500) return detail("Something went wrong on the server.", 502);
 
+    const contentType = res.headers.get("content-type") ?? "application/json";
+
+    // Error bodies are small and still take the buffered path below.
+    if (stream && res.ok && res.body) {
+        return new Response(res.body, {
+            status: res.status,
+            headers: { "content-type": contentType, "cache-control": "no-store" },
+        });
+    }
+
     const body = await res.text();
     return new Response(body || null, {
         status: res.status,
-        headers: {
-            "content-type": res.headers.get("content-type") ?? "application/json",
-        },
+        headers: { "content-type": contentType },
     });
 }
