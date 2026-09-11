@@ -36,11 +36,12 @@ interface RequestOptions {
     bounceOn401?: boolean;
 }
 
-async function request<T>(
+/** Makes the call and turns every failure into an Error worth showing. */
+async function send(
     path: string,
     init?: RequestInit,
     { bounceOn401 = true }: RequestOptions = {},
-): Promise<T> {
+): Promise<Response> {
     let res: Response;
     try {
         res = await fetch(`${API_BASE}${path}`, {
@@ -49,7 +50,9 @@ async function request<T>(
             // being explicit keeps that a decision rather than a default.
             credentials: "same-origin",
         });
-    } catch {
+    } catch (e) {
+        // A deliberate cancel is not an outage; let the caller see it as-is.
+        if (init?.signal?.aborted) throw e;
         // fetch only rejects on network-level failure, so this is the
         // "the app itself is unreachable" case rather than a bad response.
         throw new Error("Cannot reach the server. Is the backend running?");
@@ -60,6 +63,15 @@ async function request<T>(
         throw new Error("Your session has expired. Please sign in again.");
     }
     if (!res.ok) throw new Error(await errorMessage(res));
+    return res;
+}
+
+async function request<T>(
+    path: string,
+    init?: RequestInit,
+    options?: RequestOptions,
+): Promise<T> {
+    const res = await send(path, init, options);
     if (res.status === 204) return undefined as T;
     return res.json() as Promise<T>;
 }
@@ -109,3 +121,42 @@ export const explainMatches = () => post("/matches/explain");
 export const getMatches = () => request<Match[]>("/matches");
 
 export const getCurrentUser = () => request<User>("/auth/me");
+
+/**
+ * Asks the agent a question and passes its reply along as it is written.
+ *
+ * Resolves once the reply is complete. When `signal` fires it rejects with the
+ * abort error untouched, so the caller can tell a stop from a failure.
+ */
+export async function streamAgent(
+    question: string,
+    onText: (text: string) => void,
+    signal?: AbortSignal,
+): Promise<void> {
+    const res = await send("/agent", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ query: question }),
+        signal,
+    });
+    if (!res.body) return;
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    try {
+        for (;;) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            // stream: true holds back a character whose bytes were split
+            // across two chunks, instead of printing it as garbage.
+            const text = decoder.decode(value, { stream: true });
+            if (text) onText(text);
+        }
+    } catch (e) {
+        if (signal?.aborted) throw e;
+        throw new Error("The connection dropped before the reply finished.");
+    }
+
+    const tail = decoder.decode();
+    if (tail) onText(tail);
+}

@@ -76,3 +76,16 @@ def get_job(job_id: int) -> dict | None:
             return {"id": row[0], "title": row[1], "description": row[2]}
     finally:
         conn.close()
+
+def get_jobs_brief(jobs_ids: list[int]) -> dict[int, dict]:
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, title, company_name, url FROM jobs WHERE id = ANY(%s)",
+                (jobs_ids,),
+            )
+
+            return {r[0]: {"title": r[1], "company": r[2], "url": r[3]} for r in cur.fetchall()}
+    finally:
+        conn.close()
