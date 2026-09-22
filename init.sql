@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS cv (
     filename TEXT,
     content TEXT NOT NULL,
     embedding JSONB NOT NULL,
-    user_id INTEGER REFERENCES users(id)
+    user_id INTEGER REFERENCES users(id),
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -45,6 +45,15 @@ CREATE TABLE IF NOT EXISTS matches (
     score REAL,
     rank INTEGER,
     explanation JSONB,
-    user_id INTEGER REFERENCES users(id)
+    user_id INTEGER REFERENCES users(id),
     created_at TIMESTAMPTZ DEFAULT now()
 );
+
+CREATE TABLE IF NOT EXISTS agent_messages (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    role TEXT NOT NULL,  -- 'user' | 'assistant'
+    content TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_agent_messages_user ON agent_messages(user_id, created_at);

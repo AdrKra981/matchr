@@ -1,6 +1,6 @@
 "use client";
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
-import { AlertCircle, ArrowUp, RotateCw, Sparkles, Square } from "lucide-react";
+import { Fragment, useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
+import { AlertCircle, ArrowUp, History, RotateCw, Sparkles, Square } from "lucide-react";
 import { useAgent, type Turn } from "@/lib/useAgent";
 import Button from "../ui/Button";
 import Markdown from "./Markdown";
@@ -24,6 +24,61 @@ function scrollToBottom(smooth: boolean) {
     top: document.documentElement.scrollHeight,
     behavior: smooth && !reduced ? "smooth" : "auto",
   });
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function startOfDay(date: Date): number {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+}
+
+/** "Today", "Yesterday", or a short date — the heading over each day's turns. */
+function dayLabel(iso: string): string {
+  const date = new Date(iso);
+  const daysAgo = Math.round((startOfDay(new Date()) - startOfDay(date)) / DAY_MS);
+  if (daysAgo === 0) return "Today";
+  if (daysAgo === 1) return "Yesterday";
+  return date.toLocaleDateString(undefined, {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: daysAgo > 300 ? "numeric" : undefined,
+  });
+}
+
+function timeLabel(iso: string): string {
+  return new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+}
+
+function DaySeparator({ label }: { label: string }) {
+  return (
+    <li className="flex items-center gap-3 text-xs font-medium text-muted">
+      <span className="h-px flex-1 bg-line" aria-hidden />
+      <h3>{label}</h3>
+      <span className="h-px flex-1 bg-line" aria-hidden />
+    </li>
+  );
+}
+
+/** Stand-in bubbles while saved history loads, so the empty state doesn't flash first. */
+function HistorySkeleton() {
+  return (
+    <div className="flex flex-col gap-8 py-4" aria-busy aria-label="Loading your conversation">
+      {[0, 1].map((i) => (
+        <div key={i} className="flex animate-pulse-soft flex-col gap-4">
+          <div className="h-10 w-2/5 self-end rounded-2xl rounded-br-md bg-accent-soft" />
+          <div className="flex gap-3">
+            <div className="size-7 shrink-0 rounded-lg bg-sunken" />
+            <div className="flex flex-1 flex-col gap-2 pt-1">
+              <div className="h-3 w-11/12 rounded bg-sunken" />
+              <div className="h-3 w-4/5 rounded bg-sunken" />
+              <div className="h-3 w-3/5 rounded bg-sunken" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 /** Silence during a tool call reads as a hang, so count the seconds out loud. */
@@ -88,13 +143,18 @@ function TurnItem({
 
   return (
     <li className="flex flex-col gap-4">
-      <p
-        className="max-w-[85%] self-end whitespace-pre-wrap break-words rounded-2xl rounded-br-md
-          bg-accent-soft px-4 py-2.5 text-[15px] leading-relaxed text-ink"
-      >
-        <span className="sr-only">You asked: </span>
-        {turn.question}
-      </p>
+      <div className="flex max-w-[85%] flex-col items-end gap-1 self-end">
+        <p
+          className="whitespace-pre-wrap break-words rounded-2xl rounded-br-md
+            bg-accent-soft px-4 py-2.5 text-[15px] leading-relaxed text-ink"
+        >
+          <span className="sr-only">You asked: </span>
+          {turn.question}
+        </p>
+        <time dateTime={turn.askedAt} className="px-1 text-xs tabular-nums text-muted">
+          {timeLabel(turn.askedAt)}
+        </time>
+      </div>
 
       <div className="flex gap-3">
         <span
@@ -117,8 +177,9 @@ function TurnItem({
 
           {turn.status === "done" && !turn.reply && (
             <p className="text-sm text-muted">
-              The assistant finished without writing a reply. Try a more specific
-              question.
+              {turn.restored
+                ? "No reply was saved for this question. The run was stopped or didn't finish."
+                : "The assistant finished without writing a reply. Try a more specific question."}
             </p>
           )}
 
@@ -143,17 +204,21 @@ function TurnItem({
 }
 
 export default function AgentChat() {
-  const { turns, busy, ask, stop } = useAgent();
+  const { turns, history, busy, ask, stop } = useAgent();
   const [draft, setDraft] = useState("");
   const input = useRef<HTMLTextAreaElement>(null);
   const inputId = useId();
 
+  const loading = history === "loading";
   const turnCount = turns.length;
   const lastReply = turns.at(-1)?.reply;
 
-  // A new question always brings the page down to it.
+  // A new question always brings the page down to it. Loaded history jumps
+  // straight to the latest turn instead of gliding past every old one.
+  const shownCount = useRef(0);
   useEffect(() => {
-    if (turnCount > 0) scrollToBottom(true);
+    if (turnCount > 0) scrollToBottom(shownCount.current > 0);
+    shownCount.current = turnCount;
   }, [turnCount]);
 
   // Follow the reply as it streams in — unless the reader scrolled up to look at something.
@@ -167,7 +232,7 @@ export default function AgentChat() {
 
   const send = (text: string) => {
     const question = text.trim();
-    if (!question || busy) return;
+    if (!question || busy || loading) return;
     setDraft("");
     if (input.current) {
       input.current.style.height = "";
@@ -187,18 +252,33 @@ export default function AgentChat() {
 
   return (
     <div className="flex flex-1 flex-col">
-      {turns.length === 0 ? (
+      {history === "failed" && (
+        <p className="mb-4 flex items-center gap-2 text-sm text-muted">
+          <History className="size-4 shrink-0" aria-hidden />
+          Couldn&apos;t load your earlier conversation. New questions still work.
+        </p>
+      )}
+
+      {loading ? (
+        <HistorySkeleton />
+      ) : turns.length === 0 ? (
         <EmptyState onPick={send} />
       ) : (
         <ol className="flex flex-col gap-8 pb-4" aria-label="Conversation">
-          {turns.map((turn) => (
-            <TurnItem
-              key={turn.id}
-              turn={turn}
-              canRetry={!busy}
-              onRetry={() => send(turn.question)}
-            />
-          ))}
+          {turns.map((turn, i) => {
+            const day = dayLabel(turn.askedAt);
+            const newDay = i === 0 || dayLabel(turns[i - 1].askedAt) !== day;
+            return (
+              <Fragment key={turn.id}>
+                {newDay && <DaySeparator label={day} />}
+                <TurnItem
+                  turn={turn}
+                  canRetry={!busy}
+                  onRetry={() => send(turn.question)}
+                />
+              </Fragment>
+            );
+          })}
         </ol>
       )}
 
@@ -226,7 +306,7 @@ export default function AgentChat() {
             rows={1}
             value={draft}
             maxLength={MAX_QUESTION_CHARS}
-            placeholder="Ask the assistant to find or rank offers"
+            placeholder={loading ? "Loading your conversation…" : "Ask the assistant to find or rank offers"}
             onChange={(e) => {
               setDraft(e.target.value);
               // Grow with the text, up to a point.
@@ -259,7 +339,7 @@ export default function AgentChat() {
             <button
               key="send"
               type="submit"
-              disabled={!draft.trim()}
+              disabled={!draft.trim() || loading}
               title="Send"
               className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-accent text-accent-on
                 transition-colors duration-150 hover:bg-accent-hover

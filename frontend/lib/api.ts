@@ -1,5 +1,5 @@
 import { API_BASE } from "./config";
-import { CvUploadResult, Match, RankParams, User } from "./types";
+import { AgentMessage, CvUploadResult, Match, RankParams, User } from "./types";
 
 /** FastAPI puts its error text in `detail`; fall back to the status code. */
 async function errorMessage(res: Response): Promise<string> {
@@ -122,6 +122,8 @@ export const getMatches = () => request<Match[]>("/matches");
 
 export const getCurrentUser = () => request<User>("/auth/me");
 
+export const getAgentHistory = () => request<AgentMessage[]>("/agent/history");
+
 /**
  * Asks the agent a question and passes its reply along as it is written.
  *
@@ -144,7 +146,7 @@ export async function streamAgent(
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     try {
-        for (;;) {
+        for (; ;) {
             const { done, value } = await reader.read();
             if (done) break;
             // stream: true holds back a character whose bytes were split
@@ -160,3 +162,4 @@ export async function streamAgent(
     const tail = decoder.decode();
     if (tail) onText(tail);
 }
+
