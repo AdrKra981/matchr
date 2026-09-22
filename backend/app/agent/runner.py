@@ -106,7 +106,7 @@ def run_agent_stream(user_message: str, user_id: int, max_steps: int = 6):
                 args = json.loads(t["args"])
                 fn = TOOL_FUNCTIONS.get(t["name"])
                 result = fn(args, user_id) if fn else {"error": f"Unknown tool: {t['name']}"}
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 logger.exception("tool failed", extra={"tool": t["name"]})
                 result = {"error": str(e)}
             messages.append({"role": "tool", "tool_call_id": t["id"], "content": json.dumps(result, default=str)})
