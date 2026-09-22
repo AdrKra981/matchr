@@ -28,6 +28,14 @@ export interface Match {
     explanation: Explanation | null;
 }
 
+/** One saved chat message, as GET /agent/history returns it (oldest first). */
+export interface AgentMessage {
+    role: "user" | "assistant";
+    content: string;
+    /** ISO timestamp. */
+    created_at: string;
+}
+
 export interface RankParams {
     topK?: number;
     what?: string;
