@@ -55,6 +55,29 @@ export interface CvUploadResult {
     embedding_dim: number;
 }
 
+/** POST /jobs/index and POST /matches/rank queue work and return this at once. */
+export interface QueuedJob {
+    job_id: string;
+    status: string;
+}
+
+/** RQ's job states, as GET /…/{job_id} reports them. */
+export type JobStatus =
+    | "queued"
+    | "started"
+    | "deferred"
+    | "scheduled"
+    | "finished"
+    | "failed"
+    | "stopped"
+    | "canceled";
+
+export interface JobState<T> {
+    status: JobStatus;
+    /** Set once the job has finished; null before that and on failure. */
+    result: T | null;
+}
+
 /** The four sequential backend calls behind "Find matches". */
 export type PipelineStage = "fetch" | "index" | "rank" | "explain";
 

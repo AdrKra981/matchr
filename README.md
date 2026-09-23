@@ -1,141 +1,100 @@
 # Matchr — AI job-matching agent
 
 Matchr reads your CV and finds the job offers that fit it best. Instead of keyword
-search, it matches your CV against real offers **semantically** (vector similarity),
-then uses an LLM to explain *why* each offer fits and *what your CV is missing* for it.
+search, it matches your CV to offers **semantically** (vector search), refines the
+result with a **re-ranker**, and finally an LLM explains *why* an offer fits and *what
+your CV is missing*. Also available as an **agent** — it fetches, ranks, and advises in
+a multi-step loop.
 
-> Personal project built to explore AI engineering + systems architecture:
-> RAG-style retrieval, vector search, LLM structured outputs, and a clean,
-> layered backend behind a Next.js frontend — all running in Docker.
+> Built to go deep into AI Engineering and production systems: RAG with evaluation,
+> a tool-calling agent, observability, background processing — tested, measured, and
+> hardened for production.
 
-## How it works
+## How it works — a three-stage funnel
 
-Matching happens in **two complementary layers**:
-
-1. **Vector retrieval (fast, broad).** The CV and every job offer are turned into
-   embeddings (`text-embedding-3-small`). Qdrant finds the offers whose vectors are
-   closest to the CV by cosine similarity — this catches semantic fit even when the
-   exact keywords differ.
-2. **LLM judgement (slow, nuanced).** For the top matches, an LLM (`gpt-4o-mini`)
-   compares CV vs offer and returns a **structured** verdict: a 0–100 match score,
-   a list of strengths, and a list of gaps in the CV. This captures nuances that raw
-   similarity misses (seniority, specific required tech), and turns a ranking into
-   actionable feedback.
+Matching is a funnel: each stage is narrower and more expensive, so the costly model
+only ever sees the best candidates.
 
 ```mermaid
 flowchart LR
-    CV[CV PDF] -->|pypdf| T[Text] -->|embed| CVE[CV vector]
-    A[Adzuna API] -->|fetch + dedup| PG[(PostgreSQL<br/>jobs)]
-    PG -->|embed title+desc| Q[(Qdrant<br/>job vectors)]
-    CVE -->|cosine + metadata filter| Q
-    Q -->|top-N job_ids| R[Ranking]
-    R -->|CV + offer| LLM[gpt-4o-mini<br/>structured output]
+    CV[CV PDF] -->|pypdf + embed| CVE[CV vector]
+    A[Adzuna API] -->|fetch + dedup| PG[(PostgreSQL)]
+    PG -->|embed title+desc| Q[(Qdrant<br/>dense + BM25)]
+    CVE -->|hybrid: dense+BM25+RRF| R1[~30 candidates]
+    R1 -->|cross-encoder<br/>rerank| R2[top 10]
+    R2 -->|CV + offer| LLM[gpt-4o-mini<br/>structured output]
     LLM -->|score / strengths / gaps| M[(matches)]
     M --> UI[Next.js UI]
 ```
+
+1. **Retrieval (cheap, broad):** hybrid search — dense (`text-embedding-3-small`,
+   semantics) + BM25 (exact technologies) + RRF fusion in Qdrant.
+2. **Re-ranking (medium, precise):** a multilingual cross-encoder narrows 30 → 10.
+3. **LLM (expensive, nuanced):** `gpt-4o-mini` with structured output — a 0–100 score,
+   strengths, and gaps (grounded in the offer, not hallucinated).
+
+## How I measure AI quality (LLMOps)
+
+Every change to retrieval/prompts is judged by **data**, not by eyeballing:
+
+- **Golden set** — CVs with labeled relevant offers (ground truth).
+- **Retrieval metrics** — `recall@k` (did we find the relevant ones) and `MRR` (are they
+  ranked high). These showed hybrid lifted MRR from 0.25 → 0.50, and re-ranking to 0.667.
+- **Faithfulness (LLM-as-judge)** — a second, stronger model checks that explanations are
+  grounded in the CV/offer (anti-hallucination). I **calibrate** the metric by hand
+  against ground truth, because the judge itself can be wrong.
+- Metrics are unit-tested and run in CI; the full eval is a periodic tool.
+
+This "change → measure → decide" loop caught, for example, that an English re-ranker
+degraded quality 4× on Polish data — swapped for a multilingual one after measuring.
+
+## Agent
+
+Agent mode: the LLM decides which tools to use (`fetch_jobs`, `rank_jobs`) and in what
+order, in an observe→decide→act loop. Resilient (tool errors become observations, step
+limit), secure (`user_id` from the token, never from the model), with response streaming
+and per-user conversation history.
 
 ## Tech stack
 
 | Layer | Tech |
 |---|---|
-| Frontend | Next.js (React, TypeScript) |
+| Frontend | Next.js (React, TypeScript), SSE streaming |
 | Backend | FastAPI (Python) |
-| Relational data | PostgreSQL (jobs, cv, matches) |
-| Vector search | Qdrant (1536-dim, cosine) |
-| Cache / rate limit | Redis |
-| AI | OpenAI (embeddings + chat with structured outputs) |
-| Job source | Adzuna official API |
-| Orchestration | Docker Compose |
+| Relational data | PostgreSQL (jobs, cv, matches, users, agent_messages) |
+| Vector search | Qdrant (dense 1536 + sparse BM25, RRF) |
+| Re-ranking / sparse | fastembed (jina multilingual, BM25) |
+| Cache / queue / rate limit | Redis + RQ (background jobs) |
+| AI | OpenAI (embeddings + chat, structured outputs) |
+| Job source | Adzuna API |
+| Observability | JSON logs + request-id, Prometheus metrics |
+| Orchestration | Docker Compose (backend, worker, postgres, qdrant, redis) |
 
+## Production engineering
+
+- **Tests** (pytest) + **CI/CD** (GitHub Actions: ruff lint → tests → build).
+- **Observability:** structured logging with correlation-id, metrics (latency, tokens,
+  cache hit-rate, LLM calls) at `/metrics`.
+- **Background jobs** (RQ): indexing and ranking don't block the request — idempotent,
+  with retry and DLQ; the worker warms models at startup.
+- **Security:** JWT + bcrypt, per-`user_id` data isolation, guardrails (input validation,
+  delimiting, prompt-injection defense).
+- **Profiling:** latency budget measured per stage (rerank identified as the bottleneck →
+  moved to the background).
 ## Running locally
 
-**Prerequisites:** Docker, Node.js, and API keys for [OpenAI](https://platform.openai.com)
-and [Adzuna](https://developer.adzuna.com) (both have free tiers).
-
-1. Create `.env` in the project root (see `.env.example`):
-
-```env
-   POSTGRES_USER=matchr
-   POSTGRES_PASSWORD=change_me
-   POSTGRES_DB=matchr
-   OPENAI_API_KEY=sk-...
-   ADZUNA_APP_ID=...
-   ADZUNA_APP_KEY=...
-```
-
-2. Start the backend stack (FastAPI + PostgreSQL + Qdrant + Redis):
+Requirements: Docker, Node.js, API keys for OpenAI and Adzuna (both have free tiers).
 
 ```bash
-   docker compose up --build
+# .env at project root (POSTGRES_*, OPENAI_API_KEY, ADZUNA_*, JWT_SECRET)
+docker compose up --build          # backend + worker + postgres + qdrant + redis
+cd frontend && npm install && npm run dev
 ```
 
-   API docs: http://localhost:8000/docs · Qdrant dashboard: http://localhost:6333/dashboard
-
-3. Start the frontend:
-
-```bash
-   cd frontend
-   npm install
-   npm run dev
-```
-
-   App: http://localhost:3000
-
-4. In the UI: upload your CV (PDF), type a role (e.g. `frontend developer`), hit
-   **Analyze**, and read the ranked matches with per-offer explanations.
-
-## Architecture notes
-
-The backend follows a **layered / clean architecture**:
-
-```
-backend/app/
-├── domain/        # entities & read models (Job, JobIndexItem) — no framework deps
-├── sources/       # input adapters (JobSource interface + AdzunaSource)
-├── repository/    # data access (PostgreSQL)
-├── usecases/      # orchestration (fetch, rank, explain)
-├── ai/            # embeddings + LLM explanations
-├── api/           # FastAPI controllers (thin HTTP layer)
-├── vectordb.py    # Qdrant client
-├── db.py          # PostgreSQL connection
-└── cache.py       # Redis client
-```
-
-Each layer depends only on the one beneath it; the domain knows nothing about the
-outside world. The frontend mirrors this: a typed API layer (`lib/api.ts`) and
-presentational components composed by a thin page.
-
-**Design highlights:**
-- **Deduplication** at two levels — `ON CONFLICT (external_id)` in Postgres and
-  point-id upsert in Qdrant.
-- **Composable metadata filters** on the vector search — the ranking is scoped by a
-  Qdrant filter built dynamically from whatever the user provides (`search_query`,
-  `city`, minimum salary), combined with `AND` semantics. Switching the role or
-  filters changes the candidate pool without deleting history, and adding a new filter
-  is one condition away.
-- **Redis caching** of fetched offers and (expensive) LLM explanations, keyed by a
-  hash of the inputs, plus rate limiting on the external API.
-- **Structured LLM outputs** (Pydantic) — no fragile string parsing.
-
-## Roadmap
-
-**Multi-user authentication (next major step).** Turn Matchr from a single-user tool
-into a real multi-tenant app: accounts with email/password (hashed with `bcrypt`) or
-OAuth, JWT-based sessions, and protected endpoints. The core of the work is **scoping
-every piece of data by `user_id`** — CVs, matches, and per-user job pools — so one user
-can never see another's data. Because ranking already runs through a composable Qdrant
-filter, per-user isolation is largely *one more condition* (`user_id` in the payload +
-filter) — exactly the "shared collection, filter by owner" pattern that vector
-databases are designed for.
-
-**Other ideas:**
-- Deduplicate near-duplicate offers (same role reposted under different IDs) by `title + company`.
-- Scheduled daily runs that fetch new offers and email the best new matches.
-- Support more job sources behind the existing `JobSource` interface.
-- Generate a tailored cover letter per offer; track applications.
+API: http://localhost:8000/docs · Front: http://localhost:3000 · Metrics: /metrics
 
 ## Notes
 
-Built for personal, non-commercial use. Job data comes from Adzuna's official API,
-used within its free tier and terms. API keys and uploaded CVs are kept local
-(git-ignored) and never committed.
+Personal, non-commercial project. Job data from Adzuna's official API (free tier). Keys
+and CVs are kept local (git-ignored), never committed. For a production version with real
+CVs: a local model, or a DPA + data minimization (GDPR).

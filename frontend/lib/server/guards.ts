@@ -63,3 +63,10 @@ export async function readCredentials(
         return null;
     }
 }
+
+/** RQ job ids are UUIDs; anything else never reaches the backend's URL. */
+const JOB_ID = /^[A-Za-z0-9-]{1,64}$/;
+
+export function jobIdOrError(jobId: string): Response | null {
+    return JOB_ID.test(jobId) ? null : detail("Invalid job id.", 400);
+}

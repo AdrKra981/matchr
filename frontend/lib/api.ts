@@ -1,5 +1,13 @@
 import { API_BASE } from "./config";
-import { AgentMessage, CvUploadResult, Match, RankParams, User } from "./types";
+import {
+    AgentMessage,
+    CvUploadResult,
+    JobState,
+    Match,
+    QueuedJob,
+    RankParams,
+    User,
+} from "./types";
 
 /** FastAPI puts its error text in `detail`; fall back to the status code. */
 async function errorMessage(res: Response): Promise<string> {
@@ -104,17 +112,57 @@ export function uploadCv(file: File): Promise<CvUploadResult> {
 export const fetchJobs = (what: string) =>
     post(`/jobs/fetch?what=${encodeURIComponent(what)}`);
 
-export const indexJobs = () => post("/jobs/index");
+const POLL_INTERVAL_MS = 1500;
+/** Well past a slow rerank or a full reindex; after this we stop asking. */
+const POLL_TIMEOUT_MS = 10 * 60 * 1000;
 
-export const rankMatches = ({ topK = 10, what, city, minSalary }: RankParams = {}) => {
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Asks `statusPath/{jobId}` until the background job settles.
+ *
+ * Resolves with the job's result, or rejects once it has failed, been
+ * stopped, or is still going after POLL_TIMEOUT_MS. Retries the backend
+ * schedules show up as "scheduled"/"queued" and are simply waited out.
+ */
+async function waitForJob<T>(statusPath: string, jobId: string, what: string): Promise<T> {
+    const deadline = Date.now() + POLL_TIMEOUT_MS;
+    for (;;) {
+        const { status, result } = await request<JobState<T>>(
+            `${statusPath}/${encodeURIComponent(jobId)}`,
+        );
+        if (status === "finished") return result as T;
+        if (status === "failed") throw new Error(`${what} failed on the server.`);
+        if (status === "stopped" || status === "canceled") {
+            throw new Error(`${what} was cancelled on the server.`);
+        }
+        if (Date.now() > deadline) throw new Error(`${what} is taking too long.`);
+        await sleep(POLL_INTERVAL_MS);
+    }
+}
+
+/** Queues indexing and waits for it, so ranking never searches a half-built index. */
+export async function indexJobs(): Promise<unknown> {
+    const { job_id } = await post<QueuedJob>("/jobs/index");
+    return waitForJob("/jobs/index", job_id, "Indexing");
+}
+
+/** Queues ranking and waits for it; explain reads the matches it saves. */
+export async function rankMatches({
+    topK = 10,
+    what,
+    city,
+    minSalary,
+}: RankParams = {}): Promise<unknown> {
     const params = new URLSearchParams({ top_k: String(topK) });
     if (what) params.append("what", what);
     if (city) params.append("city", city);
     // The backend parameter is `min_salary`; sending `minSalary` here meant
     // FastAPI silently dropped it and the filter never applied.
     if (minSalary !== undefined) params.append("min_salary", String(minSalary));
-    return post(`/matches/rank?${params}`);
-};
+    const { job_id } = await post<QueuedJob>(`/matches/rank?${params}`);
+    return waitForJob("/matches/rank", job_id, "Ranking");
+}
 
 export const explainMatches = () => post("/matches/explain");
 
