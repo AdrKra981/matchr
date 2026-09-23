@@ -1,11 +1,11 @@
 import logging
 
 from fastapi import APIRouter, Depends
-from rq.job import Job, Retry
+from rq.job import Retry
 
 from app.auth.deps import get_current_user
 from app.domain.user import User
-from app.tasks.queue import redis_conn, task_queue
+from app.tasks.queue import fetch_job, task_queue
 from app.usecases.fetch_jobs import fetch_and_store_jobs
 from app.usecases.index_jobs import index_jobs
 
@@ -26,5 +26,5 @@ def index_jobs_api(current_user: User = Depends(get_current_user)):
 
 @router.get("/index/{job_id}")
 def index_status(job_id: str, current_user: User = Depends(get_current_user)):
-    job = Job.fetch(job_id, connection=redis_conn)
+    job = fetch_job(job_id)
     return {"status": job.get_status(), "result": job.result}

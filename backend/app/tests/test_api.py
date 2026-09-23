@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -27,29 +29,30 @@ def test_health():
     assert r.status_code == 200
     assert r.json() == {"status": "ok"}
 
-def test_rank_endpoint_happy(monkeypatch, signed_in):
+def test_rank_endpoint_enqueues(monkeypatch, signed_in):
     seen = {}
 
-    def fake_rank_jobs(user_id, top_k=10, what=None, city=None, min_salary=None):
-        seen.update(user_id=user_id, top_k=top_k)
-        return {"cv_id": 1, "matches": []}
+    def fake_enqueue(func, *args, **kwargs):
+        seen["func"] = func
+        seen["args"] = args
+        return SimpleNamespace(id="job-123")
 
-    monkeypatch.setattr(matches_api, "rank_jobs", fake_rank_jobs)
+    # CV exists → endpoint proceeds to enqueue (no real DB)
+    monkeypatch.setattr(matches_api, "get_latest_cv", lambda user_id: {"id": 1})
+    monkeypatch.setattr(matches_api.task_queue, "enqueue", fake_enqueue)
     r = client.post("/matches/rank?top_k=5")
     assert r.status_code == 200
-    assert r.json()["cv_id"] == 1
-    assert seen["user_id"] == TEST_USER.id
-    assert seen["top_k"] == 5
+    assert r.json() == {"job_id": "job-123", "status": "queued"}
+    # ranking is enqueued, not run inline; user_id comes from the token
+    assert seen["func"] is matches_api.rank_jobs
+    assert seen["args"][0] == TEST_USER.id
+    assert seen["args"][1] == 5
 
 def test_rank_endpoint_no_cv(monkeypatch, signed_in):
-    monkeypatch.setattr(
-        matches_api, "rank_jobs",
-        lambda user_id, top_k=10, what=None, city=None, min_salary=None: {"cv_id": None, "matches": []},
-    )
+    # No CV → endpoint returns 400 immediately, without enqueuing
+    monkeypatch.setattr(matches_api, "get_latest_cv", lambda user_id: None)
     r = client.post("/matches/rank?top_k=5")
-    assert r.status_code == 200
-    assert r.json()["cv_id"] is None
-    assert r.json()["matches"] == []
+    assert r.status_code == 400
 
 def test_rank_endpoint_requires_a_signed_in_user():
     assert client.post("/matches/rank?top_k=5").status_code in (401, 403)
